@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Secure Auth System</title>
+<style>
+  :root {
+    --bg:#0a0e17; --card:#121826; --border:#1f2937; --accent:#00d68f;
+    --accent2:#0091ff; --red:#ff4d6d; --yellow:#ffc14d; --text:#e6eaf2; --muted:#6b7689;
+    --radius:16px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+    background-image:radial-gradient(circle at 30% 10%, rgba(0,214,143,0.06) 0%, transparent 50%),
+                      radial-gradient(circle at 80% 90%, rgba(0,145,255,0.06) 0%, transparent 50%);
+  }
+  .wrap { width:100%; max-width:420px; }
+  .logo-row { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:28px; }
+  .logo-icon { font-size:32px; }
+  .logo-text { font-size:20px; font-weight:800; }
+  .logo-sub { text-align:center; font-size:12px; color:var(--muted); margin-top:-22px; margin-bottom:28px; }
+
+  .card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:32px; }
+  .tabs { display:flex; background:var(--bg); border-radius:12px; padding:4px; margin-bottom:24px; }
+  .tab { flex:1; text-align:center; padding:10px; border-radius:9px; cursor:pointer; font-size:13px; font-weight:700; color:var(--muted); transition:.2s; }
+  .tab.active { background:var(--accent); color:#04140d; }
+
+  .form-group { margin-bottom:16px; }
+  .form-group label { display:block; font-size:12px; color:var(--muted); margin-bottom:7px; font-weight:600; text-transform:uppercase; letter-spacing:.6px; }
+  .form-group input {
+    width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text);
+    padding:12px 14px; border-radius:10px; font-size:14px; outline:none; transition:.2s;
+  }
+  .form-group input:focus { border-color:var(--accent); }
+
+  .strength-bar-bg { height:5px; background:var(--border); border-radius:3px; margin-top:8px; overflow:hidden; }
+  .strength-bar { height:100%; border-radius:3px; transition:.3s; width:0%; }
+  .strength-label { font-size:11px; margin-top:5px; font-weight:700; }
+  .pw-hint { font-size:11px; color:var(--muted); margin-top:5px; }
+
+  .btn {
+    width:100%; background:linear-gradient(135deg,var(--accent),#00b377); color:#04140d;
+    border:none; padding:13px; border-radius:10px; font-size:14px; font-weight:800;
+    cursor:pointer; margin-top:8px; transition:.2s;
+  }
+  .btn:hover { opacity:0.9; }
+  .btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+  .error-msg, .success-msg {
+    padding:12px 14px; border-radius:10px; font-size:13px; margin-bottom:16px; display:none;
+  }
+  .error-msg { background:rgba(255,77,109,0.1); border:1px solid rgba(255,77,109,0.25); color:var(--red); }
+  .success-msg { background:rgba(0,214,143,0.1); border:1px solid rgba(0,214,143,0.25); color:var(--accent); }
+
+  /* DASHBOARD */
+  .dash { display:none; }
+  .dash-header { display:flex; align-items:center; gap:14px; margin-bottom:24px; }
+  .avatar {
+    width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; color:#04140d;
+  }
+  .dash-name { font-size:18px; font-weight:800; }
+  .dash-email { font-size:12px; color:var(--muted); }
+
+  .info-row { display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border); font-size:13px; }
+  .info-row:last-child { border-bottom:none; }
+  .info-key { color:var(--muted); }
+  .info-val { font-weight:600; }
+
+  .jwt-box {
+    background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:14px;
+    font-family:monospace; font-size:10px; word-break:break-all; color:var(--accent2);
+    margin-top:14px; max-height:80px; overflow-y:auto;
+  }
+
+  .history-item { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); font-size:12px; }
+  .history-item:last-child { border-bottom:none; }
+  .hist-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .hist-dot.ok { background:var(--accent); }
+  .hist-dot.fail { background:var(--red); }
+
+  .btn-logout {
+    background:transparent; border:1px solid var(--red); color:var(--red);
+    margin-top:20px;
+  }
+  .btn-logout:hover { background:rgba(255,77,109,0.1); }
+
+  .section-title { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; font-weight:700; margin:20px 0 10px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="logo-row"><span class="logo-icon">🔐</span><span class="logo-text">SecureAuth</span></div>
+  <div class="logo-sub">bcrypt hashing · JWT tokens · 100% local</div>
+
+  <!-- AUTH CARD -->
+  <div class="card" id="authCard">
+    <div class="tabs">
+      <div class="tab active" id="tabLogin" onclick="switchTab('login')">Login</div>
+      <div class="tab" id="tabRegister" onclick="switchTab('register')">Register</div>
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="success-msg" id="successMsg"></div>
+
+    <!-- LOGIN FORM -->
+    <div id="loginForm">
+      <div class="form-group">
+        <label>Username or Email</label>
+        <input type="text" id="loginUsername" placeholder="johndoe">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••">
+      </div>
+      <button class="btn" onclick="doLogin()">Sign In</button>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div id="registerForm" style="display:none">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="regUsername" placeholder="johndoe">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="regEmail" placeholder="john@example.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="regPassword" placeholder="••••••••" oninput="checkStrength(this.value)">
+        <div class="strength-bar-bg"><div class="strength-bar" id="strengthBar"></div></div>
+        <div class="strength-label" id="strengthLabel"></div>
+        <div class="pw-hint">8+ chars, uppercase, lowercase, number, special char</div>
+      </div>
+      <button class="btn" onclick="doRegister()">Create Account</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="card dash" id="dashCard">
+    <div class="dash-header">
+      <div class="avatar" id="avatarLetter">U</div>
+      <div>
+        <div class="dash-name" id="dashUsername">-</div>
+        <div class="dash-email" id="dashEmail">-</div>
+      </div>
+    </div>
+
+    <div class="section-title">Account Info</div>
+    <div class="info-row"><span class="info-key">Member Since</span><span class="info-val" id="dashCreated">-</span></div>
+    <div class="info-row"><span class="info-key">Last Login</span><span class="info-val" id="dashLastLogin">-</span></div>
+
+    <div class="section-title">Your JWT Access Token</div>
+    <div class="jwt-box" id="jwtBox">-</div>
+
+    <div class="section-title">Recent Login Activity</div>
+    <div id="historyList"></div>
+
+    <button class="btn btn-logout" onclick="doLogout()">Sign Out</button>
+  </div>
+</div>
+
+<script>
+  let accessToken = null;
+
+  function switchTab(tab) {
+    document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+    document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+    document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+    hideMessages();
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = '⚠️ ' + msg;
+    el.style.display = 'block';
+    document.getElementById('successMsg').style.display = 'none';
+  }
+  function showSuccess(msg) {
+    const el = document.getElementById('successMsg');
+    el.textContent = '✅ ' + msg;
+    el.style.display = 'block';
+    document.getElementById('errorMsg').style.display = 'none';
+  }
+  function hideMessages() {
+    document.getElementById('errorMsg').style.display = 'none';
+    document.getElementById('successMsg').style.display = 'none';
+  }
+
+  async function checkStrength(password) {
+    if (!password) {
+      document.getElementById('strengthBar').style.width = '0%';
+      document.getElementById('strengthLabel').textContent = '';
+      return;
+    }
+    const res = await fetch('/api/check_password_strength', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ password })
+    });
+    const data = await res.json();
+    const bar = document.getElementById('strengthBar');
+    const label = document.getElementById('strengthLabel');
+    bar.style.width = data.score + '%';
+    const colors = { Weak:'#ff4d6d', Fair:'#ffc14d', Strong:'#00d68f', 'Very Strong':'#00d68f' };
+    bar.style.background = colors[data.label];
+    label.style.color = colors[data.label];
+    label.textContent = data.label;
+  }
+
+  async function doRegister() {
+    hideMessages();
+    const username = document.getElementById('regUsername').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+
+    const res = await fetch('/api/register', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ username, email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error); return; }
+    showSuccess('Account created! Please sign in.');
+    setTimeout(() => switchTab('login'), 1200);
+  }
+
+  async function doLogin() {
+    hideMessages();
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    const res = await fetch('/api/login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error); return; }
+
+    accessToken = data.access_token;
+    localStorage.setItem('refresh_token', data.refresh_token);
+    loadDashboard(data.user, data.access_token);
+  }
+
+  async function loadDashboard(user, token) {
+    document.getElementById('authCard').style.display = 'none';
+    document.getElementById('dashCard').style.display = 'block';
+
+    document.getElementById('avatarLetter').textContent = user.username[0].toUpperCase();
+    document.getElementById('dashUsername').textContent = user.username;
+    document.getElementById('dashEmail').textContent = user.email;
+    document.getElementById('jwtBox').textContent = token;
+
+    const meRes = await fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } });
+    const me = await meRes.json();
+    document.getElementById('dashCreated').textContent = new Date(me.created_at).toLocaleDateString();
+    document.getElementById('dashLastLogin').textContent = me.last_login ? new Date(me.last_login).toLocaleString() : 'First login';
+
+    const histRes = await fetch('/api/login_history', { headers: { 'Authorization': 'Bearer ' + token } });
+    const history = await histRes.json();
+    document.getElementById('historyList').innerHTML = history.map(h => `
+      <div class="history-item">
+        <div class="hist-dot ${h.success ? 'ok' : 'fail'}"></div>
+        <span>${h.success ? 'Successful login' : 'Failed attempt'} · ${new Date(h.timestamp).toLocaleString()}</span>
+      </div>`).join('') || '<div style="color:var(--muted);font-size:12px">No history yet</div>';
+  }
+
+  async function doLogout() {
+    if (accessToken) {
+      await fetch('/api/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + accessToken } });
+    }
+    accessToken = null;
+    localStorage.removeItem('refresh_token');
+    document.getElementById('dashCard').style.display = 'none';
+    document.getElementById('authCard').style.display = 'block';
+    document.getElementById('loginUsername').value = '';
+    document.getElementById('loginPassword').value = '';
+    switchTab('login');
+  }
+</script>
+</body>
+</html>
