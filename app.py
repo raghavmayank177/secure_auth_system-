@@ -26,9 +26,8 @@ JWT_REFRESH_DAYS = 7
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
 
-# ─────────────────────────────────────────────
 # DATABASE
-# ─────────────────────────────────────────────
+
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -69,9 +68,9 @@ def log_attempt(username, success, ip='local'):
     conn.commit()
     conn.close()
 
-# ─────────────────────────────────────────────
+
 # VALIDATION
-# ─────────────────────────────────────────────
+
 
 def validate_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
@@ -102,9 +101,9 @@ def password_strength_score(password):
     if re.search(r'[!@#$%^&*(),.?":{}|<>]', password): score += 20
     return min(score, 100)
 
-# ─────────────────────────────────────────────
+
 # JWT HELPERS
-# ─────────────────────────────────────────────
+
 
 def generate_token(user_id, username, expiry_minutes=JWT_EXPIRY_MINUTES):
     payload = {
@@ -156,17 +155,16 @@ def token_required(f):
         return f(*args, **kwargs)
     return decorated
 
-# ─────────────────────────────────────────────
 # ROUTES — PAGES
-# ─────────────────────────────────────────────
+
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# ─────────────────────────────────────────────
+
 # ROUTES — AUTH API
-# ─────────────────────────────────────────────
+
 
 @app.route('/api/register', methods=['POST'])
 def register():
